@@ -88,13 +88,17 @@ def get_video_details(video_ids, api_key):
         response.raise_for_status()  # Raise an exception for HTTP errors
         data = response.json()
         for item in data.get("items", []):
+            statistics = item["statistics"]
             video_details.append({
-                "videoId": item["id"],
+                "video_id": item["id"],
                 "title": item["snippet"]["title"],
                 "description": item["snippet"]["description"],
                 "publishedAt": item["snippet"]["publishedAt"],
+                "duration": item["contentDetails"]["duration"],
                 "channelTitle": item["snippet"]["channelTitle"],
-                "statistics": item.get("statistics", {})
+                "viewCount": statistics.get("viewCount", None),
+                "likeCount": statistics.get("likeCount", None),
+                "commentCount": statistics.get("commentCount", None)
             })
     return video_details
 
