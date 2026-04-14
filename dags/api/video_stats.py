@@ -3,8 +3,10 @@ import requests
 import json
 from dotenv import load_dotenv
 from datetime import datetime
+from airflow.decorators import task
 
 
+@task
 def get_channel_playlist_id(channel_handle, api_key):
 
     try:
@@ -39,28 +41,34 @@ def get_playlist_items(playlist_id, api_key, max_results=5, page_token=None):
         raise e
 
 
+@task
+def get_video_ids(playlist_id=None, api_key=None, max_results=5):
+    if not playlist_id:
+        raise ValueError("playlist_id must be provided.")
 
-def get_video_ids(playlist_id = None, api_key=None, max_results=5):
     video_ids = []
     pageToken = None
-    count = 0
 
-    while count < 3: # Limit to 3 pages of results
+    for _ in range(3):  # cleaner than while
+        playlist_items = get_playlist_items(
+            playlist_id, api_key, max_results, pageToken
+        )
 
-        if playlist_id:
-            playlist_items = get_playlist_items(playlist_id, api_key, max_results, pageToken)
+        if not playlist_items:
+            raise ValueError("Empty response from YouTube API")
 
-            for item in playlist_items.get("items", []):
-                video_ids.append(item["contentDetails"]["videoId"])
+        if "error" in playlist_items:
+            raise Exception(f"YouTube API error: {playlist_items['error']}")
 
-            pageToken = playlist_items.get("nextPageToken")
-        else:
-            raise ValueError("Either playlist_id or video_url must be provided.")
-        
+        for item in playlist_items.get("items", []):
+            video_id = item.get("contentDetails", {}).get("videoId")
+            if video_id:
+                video_ids.append(str(video_id))
+
+        pageToken = playlist_items.get("nextPageToken")
+
         if not pageToken:
             break
-        
-        count += 1
 
     return video_ids
 
@@ -70,6 +78,7 @@ def batch_video_ids(video_ids, batch_size=5):
         yield video_ids[i:i + batch_size]
 
 
+@task
 def get_video_details(video_ids, api_key):
     video_details = []
     for batch in batch_video_ids(video_ids):
@@ -90,14 +99,16 @@ def get_video_details(video_ids, api_key):
     return video_details
 
 
+@task
 def save_to_json(data, filename):
     with open(filename, "w") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 
 if __name__ == "__main__":
-    load_dotenv(override=True)
 
+    # Load environment variables from .env file
+    load_dotenv(override=True)
     YOUTUBE_API_KEY=os.getenv("YOUTUBE_API_KEY")
     CHANNEL_HANDLE=os.getenv("CHANNEL_HANDLE")
     max_results=5
@@ -120,6 +131,6 @@ if __name__ == "__main__":
         print(f"An error occurred while fetching the video details: {e}")
 
     try:
-        save_to_json(video_details, f"output/video_details_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json")
+        save_to_json(video_details, f"data/video_details_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json")
     except Exception as e:
         print(f"An error occurred while saving the video details to JSON: {e}")     
