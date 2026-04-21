@@ -33,7 +33,7 @@ with DAG(
     default_args=default_args,
     description='A DAG to fetch video stats from a YouTube channel and save to JSON',
     schedule_interval=timedelta(days=1),
-) as dag:
+) as dag_produce:
 
     YOUTUBE_API_KEY = Variable.get("YOUTUBE_API_KEY")
     CHANNEL_HANDLE = Variable.get("CHANNEL_HANDLE")

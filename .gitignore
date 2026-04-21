@@ -180,3 +180,6 @@ cython_debug/
 # Local docker commands history
 .docker_history
 .docker-commands
+
+# Data directory
+data/
