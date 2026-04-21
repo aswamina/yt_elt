@@ -176,3 +176,7 @@ cython_debug/
 .pypirc
 
 .DS_Store
+
+# Local docker commands history
+.docker_history
+.docker-commands
